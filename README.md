@@ -7,7 +7,7 @@ The project contains the following files:
 
 |File|Discription|
 |-|-|
-|Bike Share Analysis.html | Final report the view for interested persons  |
+|Bike Share Analysis.html | Final report to view for interested persons   |
 |Setup.pdf                | Explenation of the Capstone project           |
 |Bike share.R             | Source code                                   |
 |Bike share.Rmd           | Markdown source code                          |
