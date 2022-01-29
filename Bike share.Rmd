@@ -1,0 +1,486 @@
+---
+title: "Bike Share Customer Analysis"
+author: Mathis Blessing
+date: 2021-01-21
+lang: 'en-GB'
+output: html_document
+---
+
+&nbsp;
+
+#### Introduction
+
+##### About the Company
+
+In 2016, Cyclistic launched a successful bike-share offering. Since then, the program has grown to a fleet of 5,824 bicycles that are geotracked and locked into a network of 692 stations across Chicago. The bikes can be unlocked from one station and returned to any other station in the system anytime.
+
+&nbsp;
+
+##### About the Project
+
+Cyclist's finance analysts have concluded that annual members are much more profitable than casual riders. Although the pricing flexibility helps Cyclistic attract more customers, Management believes that maximizing the number of annual members will be key to future growth. Rather than creating a marketing campaign that targets all-new customers, Management believes there is a very good chance to convert casual riders into members. Management notes that casual riders are already aware of the Cyclistic program and have chosen Cyclistic for their mobility needs.
+
+&nbsp;
+
+##### Leading Questions
+
+* How do regular users (members) and casual users differ in their use of bikes?
+  + Do members drive during different days or times?
+  + Do members dirve longer?
+  + Do members drive with different like types?
+
+* How could causal users motivated to become members?
+
+&nbsp;
+
+#### Analysis
+
+##### Data source
+
+For this project publicly avaiaible data from the [divvy-tripdata-set](https://divvy-tripdata.s3.amazonaws.com/index.html) was used. The data has been made available by Motivate International Inc. under this [license](https://ride.divvybikes.com/data-license-agreement).
+For this case study data from January 2021 till December 2021 (12 months) was used.
+
+&nbsp;
+
+##### Setup and Requirements
+
+All data files should be stored in one folder without any other files in this folder to read them properly. Then the working directory should be changed to that specific folder.
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = 'C:/Users/mathi/Desktop/Datenanalyse/2022-01-13 Bike share company/Data')
+Sys.setlocale('LC_TIME', 'English')
+```
+
+```{r eval=FALSE}
+setwd('C:/Users/mathi/Desktop/Datenanalyse/2022-01-13 Bike share company/Data')
+```
+
+The following libraries were used:
+
+```{r}
+require(lubridate)
+require(dplyr)
+require(ggplot2)
+```
+
+&nbsp;
+
+##### Reading the files
+
+To check, if the correct folder was selected, all files in the folder are listed.
+```{r}
+file_list <- list.files()
+print(file_list)
+```
+
+In the next step, the structure of the first file is inspected to get a first impression of the data.
+
+```{r}
+first_file <- read.csv(file_list[1])
+str(first_file)
+```
+
+The first file already contains routhly 100,000 entries, hence not every single entry can be inspected visually. Because large data sets can be an issue for some computers or could take some time to process, the number of rows per file is counted and the total number of rows is calculated.
+
+```{r collapse=TRUE}
+number_of_rows <- 0
+
+for (file in file_list)
+{
+  temp_df <- read.csv(file)
+  print(paste(file, ': ', format(nrow(temp_df), big.mark=','), ' entries', sep=''))
+  number_of_rows <- number_of_rows + nrow(temp_df)
+  rm(temp_df)
+}
+print(paste('Total rows: ', format(number_of_rows, big.mark=',')))
+```
+
+Before the data from all files is stacked into one data frame, it's controlled if all files have the same columns (number of columns, order, spelling).
+
+```{r collapse=TRUE}
+columns <- colnames(first_file)
+rm(first_file)
+
+mismatches <- 0
+
+for (file in file_list)
+{
+  temp_columns <- colnames(read.csv(file))
+  if (any(temp_columns!=columns)){
+    output <- 'mismatch'
+    mismatches=mismatches+1
+  } else {
+    output <- 'ok'
+  }
+  print(paste(file, output, sep=': '))
+  rm(temp_columns)
+}
+print('All columns checked')
+print(paste('Number of mismatches:', mismatches))
+```
+
+Because all columns were fine, an empty data frame is prepared, where all data will be inserted. This data frame should have the same column names as the source data, therefore the column labels from the first file are copied and are used as column names.
+
+```{r}
+df <- data.frame(matrix(ncol=length(columns), nrow=0))
+colnames(df) <- columns
+print(df)
+```
+
+Next, all files are read and inserted one after another. To avoid duplicates and unnecessary memory use, the original file will be cleared from memory after insertion.
+
+```{r collapse=TRUE}
+for (file in file_list)
+{
+  temp_df <- read.csv(file)
+  df <- rbind(df, temp_df)
+  rm(temp_df)
+  print(paste(file, ': inserted', sep=''))
+}
+print('All data inserted')
+```
+
+&nbsp;
+
+##### Cleaning and Transformation
+
+Because cleaning the data could remove large amounts of it, it might be interesting, how many entries are removed by each step. For this reason a function is generated, which will calculate the number of rows removed from the data frame since the function was last called.
+number_of_rows was initiated during the reading of he data frames and is currently `r format(number_of_rows, big.mark=',', scientific=FALSE)`.
+
+```{r}
+removed_rows <- function(){
+  new_number_of_rows <- nrow(df)
+  removed_rows <- number_of_rows-new_number_of_rows
+  number_of_rows <<- new_number_of_rows
+  print(paste('Removed rows:', format(removed_rows, big.mark=',')))
+}
+```
+
+To figure out, what kind of cleaning and transformation is necessary, the structure of the data frame is checked.
+
+```{r}
+str(df)
+```
+
+Here are several issues noticed, like a lot of empty values, or that start and end date are not in a date time format.
+To deal with this, empty values are replaced by NA before filtering the data. For the filters it's assumed that either a stations name or id is enough to identify the station, therefore at least on of these parameters must be given for both start and end station. Additionally only rides are kept, where both start time and end time are given.
+Finally the number of removed rows is checked by calling the previously written function removed_rows().
+
+```{r}
+df[df==''] <- NA
+
+#removes rows where no start station or end station is given or the start or end date is missing
+df <- df %>% 
+  filter_at(vars(start_station_name, start_station_id), any_vars(!is.na(.))) %>% 
+  filter_at(vars(end_station_name, end_station_id), any_vars(!is.na(.))) %>%
+  filter_at(vars(started_at, ended_at), all_vars(!is.na(.)))
+
+removed_rows()
+```
+
+To deal with the incorrect format of the start and end dates, they are converted into a proper date time format.
+
+```{r}
+df$started_at <- as.POSIXct(df$started_at, format='%Y-%m-%d %H:%M:%S', tz='GMT')
+df$ended_at <- as.POSIXct(df$ended_at, format='%Y-%m-%d %H:%M:%S', tz='GMT')
+```
+
+In the next step the column 'rideable_type' is renamed and reorganized.
+
+```{r collapse=TRUE}
+df <- df %>% rename(bike_type=rideable_type) 
+df %>% distinct(bike_type)
+df$bike_type[df$bike_type=='classic_bike'] <- 'classic'
+df$bike_type[df$bike_type=='electric_bike'] <- 'electric'
+df$bike_type[df$bike_type=='docked_bike'] <- 'docked'
+```
+
+The data set contains bike rides, and from real life experience several trends are expected (seasonal, over the day time, through the week). Therfore, some additional columns are generated. These columns will allow easier summarization during later analysis.
+
+```{r}
+df$month <- format(as.Date(df$started_at), '%Y-%m-01')
+df$hour <- hour(df$started_at)
+df$day_of_week <- wday(df$started_at, label=TRUE, week_start=getOption('lubridate.week.start', 1)) 
+df$trip_duration <- as.double(difftime(df$ended_at, df$started_at, units = 'mins'))
+```
+
+Finally the column 'member_causal' is checked and renamed.
+
+```{r collapse=TRUE}
+df %>% distinct(member_casual)
+df <- df %>% rename(user_type=member_casual)
+```
+
+To control the progress and if there is anything obvious left, the structure of the data frame is controlled again.
+
+```{r}
+str(df)
+```
+
+Because there is nothing missing or wrong, yet another, more statistical analysis tool is utilized: the summary.
+
+```{r}
+summary(df)
+```
+
+This shows, that there are still some noticeable problems:
+
+* The minimum trip duration is negative
+* The maximum trip duration is very large 
+
+To deal with the negative trip duration they'll just be removed.
+In addition a limit on the trip duration is set. Trips which took less than two minutes or more than one day are considered not real trips. 
+
+```{r collapse=TRUE}
+df <- df %>% filter(trip_duration>0)
+removed_rows()
+df <- df %>% filter(trip_duration>2)
+df <- df %>% filter(trip_duration<(24*60))
+removed_rows()
+```
+
+Once again, the summary is viewed to control, if there is anything else to do.
+
+```{r}
+summary(df)
+```
+
+Because everything seems fine, now the data itself is inspected to get an impression of what the data itself is.
+
+```{r}
+head(df)
+```
+
+As a control, the number of distinct values per column are calculated. For some of them, e.g. month, day, hour, a specific outcome is expected. 
+
+```{r}
+sapply(df, n_distinct)
+```
+
+Most columns seem to be fine, but there are differences between the number of station names and station ids.
+Because no list of the stations was provided and there are to many, manual control is not possible. A spell checking tool could be used, but due to the way the stations are named, it's unlikely, that the incorrect stations can be identified. 
+Therefore, the problem is noted but ignored for further analysis.
+However, the stations, which start station names and start station ids are not among the end stations can be shown:
+
+```{r}
+setdiff(df$start_station_name, df$end_station_name)
+setdiff(df$start_station_id, df$end_station_id)
+```
+
+The same for end station names and end station ids, which are not among the start stations:
+
+```{r}
+setdiff(df$end_station_name, df$start_station_name)
+setdiff(df$end_station_id, df$start_station_id)
+```
+
+Because there is no known issue left, the data frame is now considered clean and ready for analysis.
+
+&nbsp;
+
+##### Analysis and Visualization
+
+First, the time related patterns are analyzed. Therefore, the data frame is summarized by month, day, and hour. Because the main interest is the characterization of the user type 'member' the different user types are kept separate as well.
+
+```{r}
+df_summarized_by_time <- df %>%
+  group_by(user_type, month, day_of_week, hour) %>%
+  summarize(ride_count=n(), duration=sum(trip_duration))
+```
+
+Now the change over the year can be visualized:
+
+```{r}
+df_summarized_by_time %>%
+  group_by(user_type, month) %>%
+  summarize(ride_count=sum(ride_count)) %>%
+  ggplot(aes(x=as.Date(month, '%Y-%m-%d'), y=ride_count, group=user_type, color=user_type))+
+  geom_line(size=1)+
+  geom_point(aes(color=user_type), shape=18, size=3)+
+  scale_y_continuous(breaks=scales::breaks_extended(n=10))+
+  ggtitle('Rides by Month')+
+  theme_bw()+
+  theme(plot.title=element_text(hjust=0.5))+
+  ylab('Number of Rides')+
+  xlab('Month')+
+  labs(color='User Type')+
+  scale_x_date(date_labels='%b \n %Y', date_breaks='1 month', minor_breaks=NULL)
+```
+
+As expected, most rides happened in the warm months. Also the two user types have roughly the same amount of rides, but most rides in the winter season are from members.  
+
+In the next step, the change over the time of the day is analyzed.
+
+```{r}
+df_summarized_by_time %>%
+  group_by(user_type, hour) %>%
+  summarize(ride_count=sum(ride_count)) %>%
+  mutate(hour=factor(hour)) %>%
+  ggplot(aes(x=hour, y=ride_count, group=user_type, color=user_type))+
+  geom_line(size=1)+
+  geom_point(aes(color=user_type), shape=18, size=3)+
+  scale_y_continuous(breaks=scales::breaks_extended(n=10))+
+  ggtitle('Rides by Time of the Day')+
+  theme_bw()+
+  theme(plot.title=element_text(hjust=0.5))+
+  ylab('Number of Rides')+
+  xlab('Time of the Day')+
+  labs(color='User Type')
+```
+
+Here the expected low during night-time can be seen, but also strong differences between the user types: 
+Most casual users are active in the afternoon. This is also true for members, but they've also peak during the morning.
+This pattern might occur because members use the bike for their way to and from work (or school, university, ...), while causal users mainly use it to get to after-work activities.  
+
+Because the different user types might have used the bike on different hours on working days and weekends, the time of the day and day of the week are inspected together.
+
+```{r fig.height=5}
+df_summarized_by_time %>%
+  group_by(user_type, day_of_week, hour) %>%
+  summarize(ride_count=sum(ride_count)) %>%
+  mutate(hour=factor(hour)) %>%
+  ggplot(aes(x=hour, y=reorder(day_of_week, desc(day_of_week)), fill=ride_count))+
+  geom_tile(color='black', size=0.1)+
+  scale_fill_gradient(low='white', high='red')+
+  theme(panel.grid=element_blank(), 
+        panel.background=element_blank(), 
+        strip.background=element_rect(fill='#ccff66'),
+        strip.text.y=element_text(angle=0, face='bold'))+
+  facet_grid(rows=vars(user_type))+
+  ylab('Day of the Week')+
+  xlab('Time of the Day')+
+  labs(fill='Number of Rides')+
+  ggtitle('Rides by Time of the Day, Day of the Week, and User Type')+
+  theme(plot.title=element_text(hjust=0.5))
+```
+
+This graph indicates, that members used the bike mostly on working days in the morning and afternoon, but also during the weekends. This strongly supports, that members used the bikes to get to work and back home.
+Casual users mostly used the bike on afternoons during the week and all day at the weekends, probably to get to a after-work activity (hobby, friend) or a bike tour on the weekend.  
+
+As a next step it might be interesting to check, how long the trips took. But because the different available bike types may affect the trip duration it could be useful to analyze them first.
+To analyze both trip duration and bike type the data frame is summarized again, but this time by user type, bike type, and trip duration. Because the trip duration is continues, it was grouped into 10 minute long intervals.
+
+```{r}
+df_summarized_by_biketype_duration <- df %>%
+  mutate(trip_duration_rounded=round((trip_duration+5), digits=-1)) %>%
+  group_by(user_type, bike_type, trip_duration_rounded) %>%
+  summarize(ride_count=n(), duration=sum(trip_duration))
+```
+
+To figure out, which bike types the two user types used, the percentage of rides for each bike type and user type was calculated and visualized.
+
+```{r, fig.height=1.5}
+df_summarized_by_biketype_duration %>%
+  group_by(user_type, bike_type) %>%
+  summarize(ride_count=sum(ride_count)) %>%
+  mutate(proportion=ride_count/sum(ride_count)) %>%
+  ggplot(aes(fill=bike_type, y=proportion, x=user_type), position='fill')+
+  geom_col(position='fill')+
+  ylab('Proportion of Rides')+
+  xlab('User Type')+
+  labs(fill='Bike Type')+
+  geom_text(aes(label=scales::percent(proportion)), position=position_stack(0.5))+  
+  ggtitle('Bike Type by User Type')+
+  theme(plot.title=element_text(hjust=0.5))+
+  coord_flip()
+```
+
+While the majority of both user types used the 
+classic bikes, the members show a stronger preference for it. On the other side, members did not use the docked bikes at all.  
+
+To check the trip duration, the average trip duration for both user types is calculated, then the average trip duration by user type and bike type is visualized.
+
+```{r}
+df %>%
+  group_by(user_type) %>%
+  summarize(ride_count=n(), average_length=mean(trip_duration))
+
+df %>%
+  group_by(user_type, bike_type) %>%
+  summarize(ride_count=n(), average_ride_duration=mean(trip_duration)) %>%
+  ggplot(aes(y=average_ride_duration, x=user_type, fill=bike_type))+
+  geom_bar(stat='identity', color='black', position=position_dodge())+
+  ylab('Average Ride Duration [min]')+
+  xlab('User Type')+
+  labs(fill='Bike Type')+
+  ggtitle('Average Ride Duration by Bike and User Type')+
+  theme_bw()+
+  geom_text(size=3, aes(label=paste(round(average_ride_duration, 2), 'min')), position=position_dodge(0.9), vjust=-0.5)+
+  theme(plot.title=element_text(hjust=0.5))
+```
+
+According to the trip duration, the trips of casual users took on average two times longer with a classic bike than the trips from members. That might be because most trips of members were to or from work, while most casuals trips are for free time activity.  
+
+To check the trip duration distribution, histograms were created based on the 10 minute bins from earlier. Because most of the trips are very short but a view took a whole day, the visualization is limited to three hours or less.
+
+```{r}
+df_summarized_by_biketype_duration %>%
+  filter(trip_duration_rounded<=180) %>%
+  ggplot(aes(x=trip_duration_rounded, y=ride_count))+
+  geom_bar(stat='identity', width=10, color='black', fill='#99ccff' ,position=position_nudge(x=-5))+
+  facet_grid(user_type ~ bike_type)+
+  ylab('Number of Rides')+
+  xlab('Ride Duration [min]')+
+  ggtitle('Distribution of Ride Duration by Bike and User Type')+
+  theme_light()+
+  theme(strip.text=element_text(color='black'))+
+  theme(strip.background=element_rect(fill='#ccffcc'))+
+  theme(plot.title=element_text(hjust=0.5))
+```
+
+This shows no strong difference between the distributions. Member trips were shorter, like previously shown. Another small difference is, that casual users have a little bit more relative long trips, which could be bike tours.
+
+&nbsp;
+
+#### Summary: Characterisation of Members
+
+* Members use the bike mainly during warm seasons, with some exceptions
+
+* Members mainly use the bike for their way to and from work
+
+* Members only use classic and electric bikes, but not docked ones
+
+* Member trips are short, on average 22 min
+
+&nbsp;
+
+#### Conclusion
+
+The analysis provided some insights into the differences between the user types. However, there are still a lot of unknown elements. for example, it's unknown, how much distance the trips covered. Even though the data provided the start and end coordinates of a trip, that's not sufficient to calculate the distance driven. In the worst case, a person makes a long bike trip but returns the bike in the end to the start station, and therefore wouldn't cover any ground. In addition, the coordinates only allow calculation of the distance as the crow flies, but not as a cyclist would actually drive.
+Also, because of the lack of knowledge about the city structure, geographic patters can't be analysed. E.g. if the morning trips start in residential districts and end in industrial areas, or if people from certain districts use the bike more often than others.
+Another uncertainty are the individual users. Because the data didn't contain a user id or something similar, it's not possible to tell, how many users are there, or if they have some repeating pattern, e.g. every day at the same time the same trip. Such patterns would indicate a trip to work or something similar. This could be interesting for targeting specific groups, e.g. casual users which would benefit from a membership. 
+
+Based on this analysis I conclude, that there is not enough information about the users to launch a targeted advertisement campaign Instead, I recommend another analysis with the mentioned elements above, or a survey, were customers are asked, why they choose a member ship or why not, if they are aware of the benefits, and other similar questions.  
+
+In case a survey will be performed, the stations with the highest number of customers are listed below. 
+
+Finally I want to point some technical problems out.
+From 5,595,063 rows `r format(5595063-nrow(df), big.mark=',')` or `r format(round(nrow(df)/5595063*100, 2))` % got removed during cleaning. This amount could indicate an issue with the system, which collects the data and writes it into the data base. 
+Also, the unequal number of station names and ids should not have happened, and could easily be solved with a relational database. 
+
+
+Start stations:
+
+```{r}
+df %>%
+  mutate(member=ifelse(user_type=='member', 1, 0), casual=ifelse(user_type=='casual', 1, 0)) %>%
+  group_by(start_station_name) %>%
+  summarize(ride_count=n(), member=sum(member), casual=sum(casual)) %>% 
+  mutate(proportion_member=paste(round(member/ride_count*100, 2), '%')) %>% 
+  arrange(desc(ride_count), .group_by=TRUE) %>%
+  filter(rank(desc(ride_count))<11)
+
+```
+
+End stations:
+
+```{r}
+df %>%
+  mutate(member=ifelse(user_type=='member', 1, 0), casual=ifelse(user_type=='casual', 1, 0)) %>%
+  group_by(end_station_name) %>%
+  summarize(ride_count=n(), member=sum(member), casual=sum(casual)) %>%
+  mutate(proportion_member=paste(round(member/ride_count*100, 2), '%')) %>% 
+  arrange(desc(ride_count), .group_by=TRUE) %>%
+  filter(rank(desc(ride_count))<11)
+```
+
