@@ -440,7 +440,7 @@ This shows no strong difference between the distributions. Member trips were sho
 
 * Members only use classic and electric bikes, but not docked ones
 
-* Member trips are short, on average 22 min
+* Member trips are short, on average 13.6 min
 
 &nbsp;
 
@@ -455,7 +455,7 @@ Based on this analysis I conclude, that there is not enough information about th
 In case a survey will be performed, the stations with the highest number of customers are listed below. 
 
 Finally I want to point some technical problems out.
-From 5,595,063 rows `r format(5595063-nrow(df), big.mark=',')` or `r format(round(nrow(df)/5595063*100, 2))` % got removed during cleaning. This amount could indicate an issue with the system, which collects the data and writes it into the data base. 
+From 5,595,063 rows `r format(5595063-nrow(df), big.mark=',')` or `r format(round((5595063-nrow(df))/5595063*100, 2))` % got removed during cleaning. This amount could indicate an issue with the system, which collects the data and writes it into the data base. 
 Also, the unequal number of station names and ids should not have happened, and could easily be solved with a relational database. 
 
 

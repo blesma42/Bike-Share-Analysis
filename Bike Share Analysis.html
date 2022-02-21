@@ -724,7 +724,7 @@ removed_rows()
 <li><p>Members use the bike mainly during warm seasons, with some exceptions</p></li>
 <li><p>Members mainly use the bike for their way to and from work</p></li>
 <li><p>Members only use classic and electric bikes, but not docked ones</p></li>
-<li><p>Member trips are short, on average 22 min</p></li>
+<li><p>Member trips are short, on average 13.6 min</p></li>
 </ul>
 <p> </p>
 </div>
@@ -733,7 +733,7 @@ removed_rows()
 <p>The analysis provided some insights into the differences between the user types. However, there are still a lot of unknown elements. for example, it’s unknown, how much distance the trips covered. Even though the data provided the start and end coordinates of a trip, that’s not sufficient to calculate the distance driven. In the worst case, a person makes a long bike trip but returns the bike in the end to the start station, and therefore wouldn’t cover any ground. In addition, the coordinates only allow calculation of the distance as the crow flies, but not as a cyclist would actually drive. Also, because of the lack of knowledge about the city structure, geographic patters can’t be analysed. E.g. if the morning trips start in residential districts and end in industrial areas, or if people from certain districts use the bike more often than others. Another uncertainty are the individual users. Because the data didn’t contain a user id or something similar, it’s not possible to tell, how many users are there, or if they have some repeating pattern, e.g. every day at the same time the same trip. Such patterns would indicate a trip to work or something similar. This could be interesting for targeting specific groups, e.g. casual users which would benefit from a membership.</p>
 <p>Based on this analysis I conclude, that there is not enough information about the users to launch a targeted advertisement campaign Instead, I recommend another analysis with the mentioned elements above, or a survey, were customers are asked, why they choose a member ship or why not, if they are aware of the benefits, and other similar questions.</p>
 <p>In case a survey will be performed, the stations with the highest number of customers are listed below.</p>
-<p>Finally I want to point some technical problems out. From 5,595,063 rows 1,122,444 or 79.94 % got removed during cleaning. This amount could indicate an issue with the system, which collects the data and writes it into the data base. Also, the unequal number of station names and ids should not have happened, and could easily be solved with a relational database.</p>
+<p>Finally I want to point some technical problems out. From 5,595,063 rows 1,122,444 or 21.06 % got removed during cleaning. This amount could indicate an issue with the system, which collects the data and writes it into the data base. Also, the unequal number of station names and ids should not have happened, and could easily be solved with a relational database.</p>
 <p>Start stations:</p>
 <pre class="r"><code>df %&gt;%
   mutate(member=ifelse(user_type==&#39;member&#39;, 1, 0), casual=ifelse(user_type==&#39;casual&#39;, 1, 0)) %&gt;%
