@@ -1,6 +1,6 @@
 # Bike Share Company
 
-> **Google-Data-Analyticst-Capstone**
+> **Google-Data-Analyticst-Capstone**  
 > This was the Capstone project of the Google Data Analytics Certificate.
 
 ## Introduction
@@ -23,11 +23,11 @@ For this project publicly avaiaible data from the [divvy-tripdata-set](https://d
 
 ## Analysis
 
-All data was read, cleaned, and analyzed with an [R-Script](Bike share.R). For better understanding, the script was then converted into an [R-Markdown file](Bike share.Rmd). For accessibility the markdown was knitted into an [html-file](Bike Share Analysis.html)
+All data was read, cleaned, and analyzed with an [R-Script](master/Bike%20share.R). For better understanding, the script was then converted into an [R-Markdown file](master/Bike%20share.Rmd). For accessibility the markdown was knitted into an [html-file](master/Bike%20Share%20Analysis.html)
 
 ## Results
 
-For detailed results check the [html-file](Bike Share Analysis.html).  
+For detailed results check the [html-file](master/Bike%20Share%20Analysis.html).  
 
 The time of the day and day of the week indicate, that most members use bikes for there way to or from work, while casual users use bikes for freetime activities, mainly during the weekend.  
 The majority of both user types prefer classic bikes over other bike types (member: 78%, casual: 62%). While roughly one fifth of both user types use electric bikes (member: 22%, casual: 23%), only casual users use docked bikes at all (member: 0%, casual: 15%).  
